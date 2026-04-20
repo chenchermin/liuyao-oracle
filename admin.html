@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>六爻后台</title>
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <header class="admin-head">
+        <div>
+          <p class="eyebrow">Admin</p>
+          <h1>六爻记录后台</h1>
+          <p class="subtle">查看排盘、用户问题、AI 解读、提示词和完整原始数据。</p>
+        </div>
+        <div class="head-actions">
+          <a class="back-link" href="./index.html">返回前台</a>
+          <button class="back-link" type="button" id="logoutBtn">退出后台</button>
+        </div>
+      </header>
+
+      <section class="stats" aria-label="记录统计">
+        <div>
+          <span>总记录</span>
+          <strong id="totalCount">0</strong>
+        </div>
+        <div>
+          <span>成功</span>
+          <strong id="successCount">0</strong>
+        </div>
+        <div>
+          <span>失败</span>
+          <strong id="errorCount">0</strong>
+        </div>
+      </section>
+
+      <section class="admin-layout">
+        <aside class="record-list-panel">
+          <div class="toolbar">
+            <input id="searchInput" type="search" placeholder="搜索姓名、问题、卦名" autocomplete="off" />
+            <button id="refreshBtn" type="button">刷新</button>
+          </div>
+          <div class="record-list" id="recordList" aria-live="polite"></div>
+        </aside>
+
+        <section class="record-detail" id="recordDetail">
+          <div class="empty-state">
+            <h2>选择一条记录</h2>
+            <p>左侧会显示最近 300 条记录。</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./admin.js"></script>
+  </body>
+</html>

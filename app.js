@@ -609,6 +609,7 @@ async function analyzeWithAI(options = {}) {
 
   lastAiSignature = signature;
   const requestId = ++aiRequestId;
+  const aiPrompt = buildAiPrompt(castData);
   els.aiBtn.disabled = true;
   els.aiStatus.textContent = "AI 正在分析卦象…";
   renderAiLoading();
@@ -621,28 +622,204 @@ async function analyzeWithAI(options = {}) {
       },
       body: JSON.stringify({
         model,
-        prompt: buildAiPrompt(castData),
+        prompt: aiPrompt,
+        stream: true,
       }),
     });
 
-    const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error?.message || (typeof data.error === "string" ? data.error : "") || `请求失败：${response.status}`);
+      throw new Error(await readErrorResponse(response));
     }
 
     if (requestId !== aiRequestId) return;
-    renderAiOutput(data.text || extractResponseText(data) || "未获取到可显示的分析文本。");
-    els.aiStatus.textContent = "AI 解卦完成。";
+    const text = await readTextStream(response, {
+      onChunk(partialText) {
+        if (requestId !== aiRequestId) return;
+        renderAiOutput(partialText, { streaming: true });
+        els.aiStatus.textContent = "AI 正在分析卦象，内容会实时更新。";
+      },
+    });
+
+    if (requestId !== aiRequestId) return;
+    renderAiOutput(text || "未获取到可显示的分析文本。");
+    try {
+      await saveReadingRecord({
+        castData,
+        model,
+        prompt: aiPrompt,
+        aiText: text,
+        status: "success",
+      });
+      els.aiStatus.textContent = "AI 解卦完成，记录已保存。";
+    } catch (saveError) {
+      els.aiStatus.textContent = `AI 解卦完成，但保存失败：${saveError.message}`;
+    }
   } catch (error) {
     if (requestId !== aiRequestId) return;
     lastAiSignature = "";
     els.aiStatus.textContent = `AI 请求失败：${error.message}`;
     els.aiOutput.innerHTML = "";
+    await saveReadingRecord({
+      castData,
+      model,
+      prompt: aiPrompt,
+      aiText: "",
+      status: "error",
+      error: error.message,
+    }).catch(() => {});
   } finally {
     if (requestId === aiRequestId) {
       els.aiBtn.disabled = false;
     }
   }
+}
+
+async function saveReadingRecord({ castData, model, prompt, aiText, status, error = "" }) {
+  const response = await fetch("/api/public/records", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userName: els.userName.value.trim(),
+      gender: els.gender.options[els.gender.selectedIndex].textContent,
+      question: els.question.value.trim(),
+      topic: els.topic.options[els.topic.selectedIndex].textContent,
+      model,
+      lines: currentLines,
+      castData,
+      prompt,
+      aiText,
+      status,
+      error,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorResponse(response));
+  }
+
+  return response.json();
+}
+
+async function readErrorResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      const data = await response.json();
+      return data.error?.message || (typeof data.error === "string" ? data.error : "") || `请求失败：${response.status}`;
+    } catch {
+      return `请求失败：${response.status}`;
+    }
+  }
+
+  const text = await response.text();
+  return text.trim() || `请求失败：${response.status}`;
+}
+
+async function readTextStream(response, { onChunk } = {}) {
+  if (!response.body) {
+    const text = await response.text();
+    let visibleText = "";
+    await revealText(text, {
+      onChunk(chunk) {
+        visibleText += chunk;
+        onChunk?.(visibleText);
+      },
+    });
+    return text;
+  }
+
+  if ((response.headers.get("content-type") || "").includes("text/event-stream")) {
+    return readSseTextStream(response, { onChunk });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    text += decoder.decode(value, { stream: true });
+    if (text.includes("[AI_ERROR]")) {
+      throw new Error(text.replace("[AI_ERROR]", "").trim() || "AI 平台请求失败。");
+    }
+    onChunk?.(text);
+  }
+
+  text += decoder.decode();
+  return text;
+}
+
+async function readSseTextStream(response, { onChunk } = {}) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+
+  const handleEvent = async (rawEvent) => {
+    const lines = rawEvent.split(/\r?\n/);
+    const eventName = lines
+      .find((line) => line.startsWith("event:"))
+      ?.slice(6)
+      .trim() || "message";
+    const payload = lines
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+
+    if (!payload || eventName === "ready" || eventName === "done") return;
+
+    let data;
+    try {
+      data = JSON.parse(payload);
+    } catch {
+      data = { text: payload };
+    }
+
+    if (eventName === "error" || data.error) {
+      throw new Error(data.error || "AI 平台请求失败。");
+    }
+
+    if (data.text) {
+      await revealText(data.text, {
+        onChunk(chunk) {
+          text += chunk;
+          onChunk?.(text);
+        },
+      });
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split(/\n\n|\r\n\r\n/);
+    buffer = events.pop() || "";
+    for (const event of events) {
+      await handleEvent(event);
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) await handleEvent(buffer);
+  return text;
+}
+
+async function revealText(value, { onChunk } = {}) {
+  const chars = Array.from(String(value || ""));
+  for (let index = 0; index < chars.length; index += 2) {
+    onChunk?.(chars.slice(index, index + 2).join(""));
+    await wait(10);
+  }
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function escapeHtml(value) {
@@ -655,9 +832,25 @@ function escapeHtml(value) {
 }
 
 function inlineFormat(value) {
-  return escapeHtml(value)
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`(.+?)`/g, "<code>$1</code>");
+  const placeholders = [];
+  const stash = (html) => {
+    const token = `%%AIINLINE${placeholders.length}%%`;
+    placeholders.push([token, html]);
+    return token;
+  };
+
+  const raw = String(value)
+    .replace(/`([^`]+?)`/g, (_, code) => stash(`<code>${escapeHtml(code)}</code>`))
+    .replace(/\*\*([^*]+?)\*\*/g, (_, strong) => stash(`<strong>${escapeHtml(strong)}</strong>`))
+    .replace(/__([^_]+?)__/g, (_, strong) => stash(`<strong>${escapeHtml(strong)}</strong>`))
+    .replace(/\*([^*]+?)\*/g, "$1")
+    .replace(/_([^_]+?)_/g, "$1");
+
+  let html = escapeHtml(raw);
+  placeholders.forEach(([token, replacement]) => {
+    html = html.replace(token, replacement);
+  });
+  return html;
 }
 
 function renderAiLoading() {
@@ -668,19 +861,20 @@ function renderAiLoading() {
   `;
 }
 
-function renderAiOutput(text) {
+function renderAiOutput(text, options = {}) {
+  const { streaming = false } = options;
   const normalized = String(text || "").replace(/\r\n/g, "\n").trim();
   if (!normalized) {
     els.aiOutput.innerHTML = "";
     return;
   }
 
-  const headingPattern = /^(?:#{1,4}\s*)?(总论|用神与世应|动爻与变卦|建议|需谨慎处|谨慎处|结论|分析|提醒|补充)(?:[:：\s]*)?(.*)$/;
+  const headingPattern = /^(总论|用神与世应|动爻与变卦|建议|需谨慎处|谨慎处|结论|分析|提醒|补充)(?:[:：\s]*)?(.*)$/;
   const sections = [];
   let current = null;
 
   normalized.split("\n").forEach((rawLine) => {
-    const line = rawLine.trim();
+    const line = cleanMarkdownLine(rawLine);
     if (!line) return;
 
     const heading = line.match(headingPattern);
@@ -701,11 +895,25 @@ function renderAiOutput(text) {
   els.aiOutput.innerHTML = sections
     .map((section, index) => `
       <article class="ai-section ${index === 0 ? "is-primary" : ""}">
+        <div class="ai-section-kicker">${String(index + 1).padStart(2, "0")}</div>
         <h3>${escapeHtml(section.title)}</h3>
         ${renderAiSectionLines(section.lines)}
       </article>
     `)
-    .join("");
+    .join("") + (streaming ? `<div class="ai-stream-cursor" aria-hidden="true"></div>` : "");
+}
+
+function cleanMarkdownLine(value) {
+  return String(value)
+    .trim()
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^>\s*/, "")
+    .replace(/^(?:\d+|[一二三四五六七八九十]+)[.、]\s*(?=(总论|用神与世应|动爻与变卦|建议|需谨慎处|谨慎处|结论|分析|提醒|补充))/u, "")
+    .replace(/^\*\*(.+?)\*\*([：:].*)?$/, (_, title, rest = "") => `${title}${rest}`)
+    .replace(/^__(.+?)__([：:].*)?$/, (_, title, rest = "") => `${title}${rest}`)
+    .replace(/^\*\*(.+?)\*\*$/, "$1")
+    .replace(/^__(.+?)__$/, "$1")
+    .replace(/\s+$/g, "");
 }
 
 function renderAiSectionLines(lines) {
@@ -719,14 +927,14 @@ function renderAiSectionLines(lines) {
   };
 
   lines.forEach((line) => {
-    const listMatch = line.match(/^[-*•]\s*(.+)$/) || line.match(/^\d+[.、]\s*(.+)$/);
+    const listMatch = line.match(/^[-*•]\s*(.+)$/) || line.match(/^\d+[.、)]\s*(.+)$/);
     if (listMatch) {
       listItems.push(listMatch[1]);
       return;
     }
 
     flushList();
-    const colonMatch = line.match(/^([^：:]{2,10})[：:]\s*(.+)$/);
+    const colonMatch = line.match(/^\*\*?([^：:*]{2,12})\*\*?[：:]\s*(.+)$/) || line.match(/^([^：:]{2,12})[：:]\s*(.+)$/);
     if (colonMatch) {
       parts.push(`<p><strong>${escapeHtml(colonMatch[1])}</strong><span>${inlineFormat(colonMatch[2])}</span></p>`);
       return;
@@ -772,6 +980,7 @@ ${rows}`;
 
 function extractResponseText(data) {
   if (data.output_text) return data.output_text;
+  if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
   return data.output
     ?.flatMap((item) => item.content || [])
     .map((part) => part.text || "")

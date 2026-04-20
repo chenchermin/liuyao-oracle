@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>后台登录</title>
+    <link rel="stylesheet" href="./admin-login.css" />
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-panel">
+        <p class="eyebrow">Admin</p>
+        <h1>后台登录</h1>
+        <p class="subtle">请输入后台密码查看排盘记录。</p>
+        <form id="loginForm">
+          <label>
+            <span>后台密码</span>
+            <input id="passwordInput" type="password" autocomplete="current-password" autofocus />
+          </label>
+          <button type="submit">登录</button>
+        </form>
+        <p class="status" id="loginStatus" aria-live="polite"></p>
+        <a href="./index.html">返回前台</a>
+      </section>
+    </main>
+    <script src="./admin-login.js"></script>
+  </body>
+</html>

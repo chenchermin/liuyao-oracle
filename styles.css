@@ -100,6 +100,20 @@ h2 {
   line-height: 1.8;
 }
 
+.admin-entry {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(13, 123, 112, 0.26);
+  border-radius: 8px;
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.46);
+}
+
 .oracle-board {
   display: grid;
   grid-template-columns: minmax(460px, 560px) minmax(980px, 1fr);
@@ -774,20 +788,21 @@ button:focus-visible {
   padding: 24px;
   border: 1px solid var(--line);
   background:
-    linear-gradient(135deg, rgba(13, 123, 112, 0.08), transparent 34%),
-    rgba(252, 250, 243, 0.78);
+    linear-gradient(135deg, rgba(13, 123, 112, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(252, 250, 243, 0.72));
 }
 
 .ai-status {
   margin-top: 14px;
   color: var(--muted);
+  font-size: 0.92rem;
   line-height: 1.6;
 }
 
 .ai-output {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 14px;
+  margin-top: 18px;
   color: var(--ink);
   line-height: 1.8;
 }
@@ -817,27 +832,48 @@ button:focus-visible {
 }
 
 .ai-section {
-  padding: 16px 18px;
+  position: relative;
+  padding: 18px 20px 18px 54px;
   border: 1px solid rgba(216, 208, 190, 0.9);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.44);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 12px 34px rgba(23, 33, 29, 0.07);
+  animation: lift 360ms ease both;
 }
 
 .ai-section.is-primary {
   border-color: rgba(13, 123, 112, 0.32);
-  background: rgba(13, 123, 112, 0.07);
+  background:
+    linear-gradient(135deg, rgba(13, 123, 112, 0.12), transparent 42%),
+    rgba(255, 255, 255, 0.68);
+}
+
+.ai-section-kicker {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(13, 123, 112, 0.28);
+  border-radius: 50%;
+  color: var(--accent-strong);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  background: rgba(244, 241, 232, 0.86);
 }
 
 .ai-section h3 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   color: var(--accent-strong);
-  font-size: 1.08rem;
+  font-size: 1.12rem;
   line-height: 1.35;
 }
 
 .ai-section p {
   display: block;
-  margin: 8px 0 0;
+  margin: 9px 0 0;
   overflow-wrap: anywhere;
 }
 
@@ -845,21 +881,47 @@ button:focus-visible {
   display: inline-block;
   margin-right: 8px;
   color: var(--ink);
+  font-weight: 800;
 }
 
 .ai-section ul {
-  margin: 8px 0 0;
-  padding-left: 1.2em;
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 .ai-section li {
-  margin: 6px 0;
+  position: relative;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ai-section li::before {
+  position: absolute;
+  top: 0.78em;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  content: "";
 }
 
 .ai-section code {
   padding: 1px 5px;
   border-radius: 5px;
   background: rgba(229, 219, 199, 0.72);
+}
+
+.ai-stream-cursor {
+  width: 9px;
+  height: 26px;
+  margin-left: 2px;
+  border-radius: 8px;
+  background: var(--accent);
+  animation: blink 900ms steps(2, start) infinite;
 }
 
 @keyframes rise {
@@ -893,6 +955,12 @@ button:focus-visible {
   50% {
     opacity: 1;
     transform: translateY(-4px);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.18;
   }
 }
 
@@ -975,6 +1043,19 @@ button:focus-visible {
   .input-panel,
   .result-panel {
     padding: 20px 16px;
+  }
+
+  .ai-panel {
+    padding: 18px 14px;
+  }
+
+  .ai-section {
+    padding: 16px;
+  }
+
+  .ai-section-kicker {
+    position: static;
+    margin-bottom: 8px;
   }
 
   .actions {
