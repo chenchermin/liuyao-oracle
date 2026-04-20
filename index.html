@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f1e8" />
+    <title>六爻占卜解卦</title>
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace" aria-labelledby="page-title">
+        <div class="intro">
+          <p class="eyebrow">Liu Yao Oracle</p>
+          <h1 id="page-title">六爻占卜解卦</h1>
+          <p class="lede">专注一事，取六爻成卦，查看本卦、变卦、动爻、六亲六神与用神提示。</p>
+        </div>
+
+        <div class="oracle-board" aria-label="六爻起卦工作台">
+          <section class="input-panel" aria-labelledby="cast-title">
+            <div class="section-head">
+              <div>
+                <p class="overline">起卦</p>
+                <h2 id="cast-title">问事与成爻</h2>
+              </div>
+              <button class="ghost-button" type="button" id="resetBtn">重置</button>
+            </div>
+
+            <div class="field-grid person-grid">
+              <label class="field">
+                <span>姓名</span>
+                <input id="userName" name="user-name" type="text" autocomplete="name" placeholder="请输入姓名" />
+              </label>
+              <label class="field">
+                <span>性别</span>
+                <select id="gender" name="gender" autocomplete="sex">
+                  <option value="">未填写</option>
+                  <option value="male">男</option>
+                  <option value="female">女</option>
+                  <option value="other">其他</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>所问之事</span>
+              <textarea id="question" name="question" rows="3" autocomplete="off" placeholder="例：未来三个月求职是否顺利？…"></textarea>
+            </label>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>事项类型</span>
+                <select id="topic" name="topic" autocomplete="off">
+                  <option value="career">事业求职</option>
+                  <option value="wealth">财运经营</option>
+                  <option value="relationship">感情婚恋</option>
+                  <option value="health">健康状态</option>
+                  <option value="study">学业考试</option>
+                  <option value="travel">出行迁动</option>
+                  <option value="general">综合事项</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>起卦方式</span>
+                <select id="method" name="method" autocomplete="off">
+                  <option value="coins">摇铜钱起卦</option>
+                  <option value="manual">指定起卦</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="coin-caster" id="coinCaster">
+              <button class="coin" type="button" id="coinA" aria-label="第一枚铜钱">
+                <span class="coin-face" aria-hidden="true">
+                  <span class="coin-char top">乾</span>
+                  <span class="coin-char right">通</span>
+                  <span class="coin-char bottom">隆</span>
+                  <span class="coin-char left">宝</span>
+                </span>
+                <span class="coin-side">待掷</span>
+              </button>
+              <button class="coin" type="button" id="coinB" aria-label="第二枚铜钱">
+                <span class="coin-face" aria-hidden="true">
+                  <span class="coin-char top">乾</span>
+                  <span class="coin-char right">通</span>
+                  <span class="coin-char bottom">隆</span>
+                  <span class="coin-char left">宝</span>
+                </span>
+                <span class="coin-side">待掷</span>
+              </button>
+              <button class="coin" type="button" id="coinC" aria-label="第三枚铜钱">
+                <span class="coin-face" aria-hidden="true">
+                  <span class="coin-char top">乾</span>
+                  <span class="coin-char right">通</span>
+                  <span class="coin-char bottom">隆</span>
+                  <span class="coin-char left">宝</span>
+                </span>
+                <span class="coin-side">待掷</span>
+              </button>
+            </div>
+
+            <div class="cast-progress" aria-live="polite">
+              <span id="progressText">点击任意铜钱开始，当前将生成初爻。</span>
+              <div class="progress-dots" id="progressDots" aria-label="六次掷钱进度"></div>
+            </div>
+
+            <div class="line-editor" id="lineEditor" aria-label="从初爻到上爻选择爻象"></div>
+
+            <div class="actions">
+              <button class="primary-button" type="button" id="castBtn">起卦解读</button>
+              <button class="secondary-button" type="button" id="coinBtn">掷一次</button>
+            </div>
+
+            <div class="coin-log" id="coinLog" aria-live="polite">
+              <span>铜钱记录会显示在这里</span>
+            </div>
+          </section>
+
+          <section class="result-panel" aria-labelledby="result-title">
+            <div class="section-head">
+              <div>
+                <p class="overline">排盘</p>
+                <h2 id="result-title">卦象结果</h2>
+              </div>
+              <time id="castTime"></time>
+            </div>
+
+            <div class="hexagram-stage">
+              <div class="hexagram-block">
+                <p class="overline">本卦</p>
+                <div class="hex-name" id="baseName">未起卦</div>
+                <div class="trigram-name" id="baseTrigrams">等待成卦</div>
+                <div class="hex-lines" id="baseLines"></div>
+              </div>
+
+              <div class="change-mark" aria-hidden="true">化</div>
+
+              <div class="hexagram-block">
+                <p class="overline">变卦</p>
+                <div class="hex-name" id="changedName">未起卦</div>
+                <div class="trigram-name" id="changedTrigrams">有动爻则成变</div>
+                <div class="hex-lines" id="changedLines"></div>
+              </div>
+            </div>
+
+            <div class="details-grid">
+              <div class="detail">
+                <span>动爻</span>
+                <strong id="movingLines">-</strong>
+              </div>
+              <div class="detail">
+                <span>世应</span>
+                <strong id="shiYing">-</strong>
+              </div>
+              <div class="detail">
+                <span>用神</span>
+                <strong id="useSpirit">-</strong>
+              </div>
+            </div>
+
+            <div class="aux-grid" id="auxGrid" aria-label="日时辅助信息"></div>
+            <div class="table-title">六爻装表</div>
+            <div class="yao-table" id="yaoTable" aria-label="六爻装表"></div>
+
+            <section class="ai-panel" aria-labelledby="ai-title">
+              <div class="section-head compact">
+                <div>
+                  <p class="overline">AI</p>
+                  <h2 id="ai-title">AI 解卦</h2>
+                </div>
+              </div>
+              <input id="aiEndpoint" name="ai-endpoint" type="hidden" value="/api/analyze" />
+              <input id="aiModel" name="ai-model" type="hidden" value="nvidia/nemotron-3-super-120b-a12b:free" />
+              <button class="primary-button" type="button" id="aiBtn">重新生成 AI 解卦</button>
+              <div class="ai-status" id="aiStatus" aria-live="polite">请先完成六爻排盘。</div>
+              <div class="ai-output" id="aiOutput"></div>
+            </section>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
