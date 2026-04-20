@@ -1,7 +1,7 @@
-const crypto = require("crypto");
+const adminSessionMaxAge = 7 * 24 * 60 * 60 * 1000;
 
-function middleware(request) {
-  if (isAdminAuthenticated(request)) {
+async function middleware(request) {
+  if (await isAdminAuthenticated(request)) {
     return;
   }
 
@@ -18,7 +18,7 @@ function middleware(request) {
   });
 }
 
-function isAdminAuthenticated(request) {
+async function isAdminAuthenticated(request) {
   const password = process.env.ADMIN_PASSWORD || "";
   if (!password) return false;
 
@@ -28,14 +28,23 @@ function isAdminAuthenticated(request) {
   const [timestamp, signature] = token.split(".");
   const issuedAt = Number(timestamp);
   if (!Number.isFinite(issuedAt)) return false;
-  if (Date.now() - issuedAt > 7 * 24 * 60 * 60 * 1000) return false;
+  if (Date.now() - issuedAt > adminSessionMaxAge) return false;
 
-  return signature === signAdminSession(timestamp);
+  return signature === await signAdminSession(timestamp);
 }
 
-function signAdminSession(value) {
+async function signAdminSession(value) {
   const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || "local-admin-secret";
-  return crypto.createHmac("sha256", secret).update(value).digest("hex");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(value));
+  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function parseCookies(cookieHeader) {
@@ -52,5 +61,4 @@ function parseCookies(cookieHeader) {
 module.exports = middleware;
 module.exports.config = {
   matcher: ["/admin.html", "/admin.js", "/admin.css"],
-  runtime: "nodejs",
 };
