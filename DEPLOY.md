@@ -2,21 +2,13 @@
 
 ## 结论
 
-这个项目不能直接部署到 GitHub Pages。
+项目已经按 Vercel 结构改造：
 
-原因：
-
-- GitHub Pages 只能托管静态文件。
-- 本项目需要 Node.js 后端调用 AI，不能把 AI 密钥放到浏览器里。
-- 本项目需要数据库保存排盘记录。
-- 后台记录接口必须在服务端做登录保护。
-
-推荐方式是：
-
-1. 代码托管到 GitHub 仓库。
-2. 用 Render、Railway、Fly.io 或支持持久磁盘的 Node.js 平台部署。
-3. 配置环境变量。
-4. 公开前台地址给别人访问，后台通过密码登录。
+- `public/` 提供前台和后台静态页面。
+- `api/` 提供 Vercel Serverless Functions。
+- `lib/` 放 AI、鉴权和数据库公共逻辑。
+- 线上数据库使用 Neon Postgres。
+- 本地没有 `DATABASE_URL` 时回退 SQLite，方便开发测试。
 
 ## 必填环境变量
 
@@ -26,6 +18,7 @@ AI_MODEL=nvidia/nemotron-3-super-120b-a12b:free
 AI_API_BASE_URL=https://openrouter.ai/api/v1
 ADMIN_PASSWORD=你的后台登录密码
 ADMIN_SESSION_SECRET=一段随机长字符串
+DATABASE_URL=Neon 提供的 Postgres 连接串
 ```
 
 `ADMIN_PASSWORD` 和 `ADMIN_SESSION_SECRET` 不能提交到 GitHub，只能放在部署平台的环境变量里。
@@ -56,12 +49,20 @@ http://localhost:3000/admin.html
 http://localhost:3000/admin-login.html
 ```
 
+## Vercel 部署
+
+1. 推送代码到 GitHub。
+2. 在 Vercel 导入该 GitHub 仓库。
+3. 在 Vercel Marketplace 添加 Neon，拿到 `DATABASE_URL`。
+4. 在 Vercel Project Settings 里配置上面的环境变量。
+5. 重新部署。
+
 ## 数据库
 
-当前使用 SQLite：
+线上使用 Neon Postgres。首次写入或读取时，服务端会自动执行建表 SQL。
+
+本地没有 `DATABASE_URL` 时使用：
 
 ```text
 data/readings.db
 ```
-
-如果部署到无持久磁盘的平台，SQLite 数据会丢失。线上部署请优先选择支持持久磁盘的平台，或者后续改成 Postgres。

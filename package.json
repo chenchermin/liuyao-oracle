@@ -1,6 +1,10 @@
 {
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  },
   "scripts": {
-    "start": "node server.js",
+    "start": "node local-server.js",
+    "dev": "vercel dev",
     "test:openai": "node test-openai-request.js"
   }
 }
