@@ -28,7 +28,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -94,7 +95,8 @@ h3 {
 }
 
 .back-link,
-.toolbar button {
+.toolbar button,
+.copy-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -107,7 +109,8 @@ h3 {
   background: rgba(255, 255, 255, 0.5);
 }
 
-button.back-link {
+button.back-link,
+.copy-button {
   cursor: pointer;
 }
 
@@ -158,13 +161,14 @@ button.back-link {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr 128px 140px 132px 132px auto auto;
   gap: 10px;
   padding: 14px;
   border-bottom: 1px solid var(--line);
 }
 
-.toolbar input {
+.toolbar input,
+.toolbar select {
   min-width: 0;
   height: 42px;
   border: 1px solid rgba(216, 208, 190, 0.95);
@@ -172,6 +176,14 @@ button.back-link {
   padding: 0 12px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.66);
+}
+
+.filter-summary {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(216, 208, 190, 0.72);
+  color: var(--muted);
+  font-size: 0.86rem;
+  background: rgba(244, 241, 232, 0.48);
 }
 
 .record-list {
@@ -239,6 +251,21 @@ button.back-link {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 18px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.copy-button {
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: rgba(229, 219, 199, 0.54);
 }
 
 .detail-grid {
@@ -349,6 +376,10 @@ pre {
   .yao-admin-row {
     grid-template-columns: 1fr 1fr;
   }
+
+  .toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -359,6 +390,12 @@ pre {
 
   .toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .detail-actions,
+  .head-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .record-detail {

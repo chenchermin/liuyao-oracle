@@ -493,6 +493,7 @@ function renderLines(target, lines, details = []) {
 }
 
 function renderTable(details, changedDetails) {
+  const useSpirits = selectedUseSpirits();
   const header = `
     <div class="yao-row is-header" aria-hidden="true">
       <span>爻位</span><span>六神</span><span>本卦爻</span><span>本卦六亲</span><span>伏藏</span><span>世应</span><span>动</span><span>变卦爻</span><span>变卦六亲</span>
@@ -501,8 +502,15 @@ function renderTable(details, changedDetails) {
   els.yaoTable.innerHTML = header + details
     .map((item, index) => ({ item, changed: changedDetails[index] }))
     .reverse()
-    .map(({ item, changed }) => `
-      <div class="yao-row">
+    .map(({ item, changed }) => {
+      const rowClasses = [
+        "yao-row",
+        item.moving ? "has-moving" : "",
+        item.hidden ? "has-hidden" : "",
+        (isUseSpirit(item, useSpirits) || isUseSpirit(item.hidden, useSpirits)) ? "is-use-spirit-row" : "",
+      ].filter(Boolean).join(" ");
+      return `
+      <div class="${rowClasses}">
         <strong>${item.position}</strong>
         <span>${item.god}</span>
         <div class="yao-mini">${strokeMarkup(item.value)}</div>
@@ -513,17 +521,30 @@ function renderTable(details, changedDetails) {
         <div class="yao-mini">${strokeMarkup(changed.value)}</div>
         <span>${item.moving ? relationMarkup(changed) : "-"}</span>
       </div>
-    `)
+    `;
+    })
     .join("");
 }
 
 function relationMarkup(item) {
-  return `<span class="relative-name">${item.relative}</span><span class="branch-token element-${item.element}">${item.branch}${item.element}</span>`;
+  const useClass = isUseSpirit(item, selectedUseSpirits()) ? " is-use-spirit" : "";
+  return `<span class="relative-name${useClass}">${item.relative}</span><span class="branch-token element-${item.element}">${item.branch}${item.element}</span>`;
 }
 
 function hiddenMarkup(item) {
   if (!item) return "-";
   return `<span class="hidden-spirit">伏</span>${relationMarkup(item)}`;
+}
+
+function selectedUseSpirits() {
+  return (topicSpirit[els.topic.value]?.spirit || "")
+    .split("/")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isUseSpirit(item, useSpirits = selectedUseSpirits()) {
+  return Boolean(item?.relative && useSpirits.includes(item.relative));
 }
 
 function renderAux(info, base) {

@@ -810,10 +810,20 @@ button:focus-visible {
 }
 
 .table-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   margin: 20px 0 12px;
   color: var(--ink);
   font-size: 1.1rem;
   font-weight: 800;
+}
+
+.table-title small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .yao-table {
@@ -822,9 +832,11 @@ button:focus-visible {
   overflow-x: auto;
   background: var(--line);
   border: 1px solid var(--line);
+  scrollbar-color: rgba(13, 123, 112, 0.36) rgba(229, 219, 199, 0.52);
 }
 
 .yao-row {
+  position: relative;
   display: grid;
   grid-template-columns: 58px 70px 96px 128px 128px 64px 104px 128px 96px;
   gap: 12px;
@@ -833,6 +845,22 @@ button:focus-visible {
   min-height: 58px;
   padding: 12px 14px;
   background: rgba(252, 250, 243, 0.88);
+}
+
+.yao-row.has-moving {
+  background:
+    linear-gradient(90deg, rgba(182, 76, 85, 0.1), transparent 34%),
+    rgba(252, 250, 243, 0.9);
+}
+
+.yao-row.has-hidden {
+  box-shadow: inset 3px 0 0 rgba(185, 148, 60, 0.34);
+}
+
+.yao-row.is-use-spirit-row {
+  background:
+    linear-gradient(90deg, rgba(13, 123, 112, 0.12), transparent 42%),
+    rgba(252, 250, 243, 0.92);
 }
 
 .yao-row.is-header {
@@ -858,6 +886,18 @@ button:focus-visible {
 .relative-name {
   margin-right: 6px;
   color: var(--ink);
+}
+
+.relative-name.is-use-spirit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px solid rgba(13, 123, 112, 0.28);
+  border-radius: 8px;
+  color: var(--accent-strong);
+  font-weight: 900;
+  background: rgba(13, 123, 112, 0.1);
 }
 
 .branch-token {
@@ -1248,6 +1288,11 @@ button:focus-visible {
   .input-panel,
   .result-panel {
     padding: 20px 16px;
+  }
+
+  .table-title {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .ai-panel {
