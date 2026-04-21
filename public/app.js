@@ -528,12 +528,12 @@ function renderTable(details, changedDetails) {
 
 function relationMarkup(item) {
   const useClass = isUseSpirit(item, selectedUseSpirits()) ? " is-use-spirit" : "";
-  return `<span class="relative-name${useClass}">${item.relative}</span><span class="branch-token element-${item.element}">${item.branch}${item.element}</span>`;
+  return `<span class="relation-pair${useClass}"><span class="relative-name">${item.relative}</span><span class="branch-token element-${item.element}">${item.branch}${item.element}</span></span>`;
 }
 
 function hiddenMarkup(item) {
   if (!item) return "-";
-  return `<span class="hidden-spirit">伏</span>${relationMarkup(item)}`;
+  return `<span class="hidden-pair"><span class="hidden-spirit">伏</span>${relationMarkup(item)}</span>`;
 }
 
 function selectedUseSpirits() {
