@@ -2,4 +2,5 @@
 .env.local
 node_modules/
 data/*.db
+data/*.db-*
 .vercel/
