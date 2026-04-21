@@ -197,6 +197,7 @@ function renderYaoRows(details, changedDetails) {
         <strong>${escapeHtml(item.position || "-")}</strong>
         <span>${escapeHtml(item.god || "-")}</span>
         <span>${escapeHtml(`${item.relative || ""}${item.branch || ""}${item.element || ""}`)}</span>
+        <span>${escapeHtml(item.hidden ? `伏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}` : "-")}</span>
         <span>${escapeHtml((item.tags || []).join(" / ") || "-")}</span>
         <span>${item.moving ? "动" : "静"}</span>
         <span>${escapeHtml(changed.relative ? `化${changed.relative}${changed.branch}${changed.element}` : "-")}</span>

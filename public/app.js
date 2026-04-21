@@ -98,6 +98,7 @@ const solarMonthStarts = [
 const produces = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
 const controls = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
 const sixGods = ["青龙", "朱雀", "勾陈", "螣蛇", "白虎", "玄武"];
+const trigramBitsByName = Object.fromEntries(Object.entries(trigramMap).map(([bits, trigram]) => [trigram.name, bits]));
 
 const topicSpirit = {
   career: { spirit: "官鬼", focus: "职位、规则、压力与机会并看" },
@@ -417,7 +418,7 @@ function yaoDetails(lines, trigrams, name, palaceElement = palaceInfo[name]?.ele
   const start = godStartIndex();
   const positions = shiYingPositions(name);
 
-  return lines.map((line, index) => {
+  const details = lines.map((line, index) => {
     const branch = index < 3 ? lowerBranches[index] : upperBranches[index - 3];
     const element = branchElement[branch];
     const tags = [];
@@ -434,6 +435,44 @@ function yaoDetails(lines, trigrams, name, palaceElement = palaceInfo[name]?.ele
       god: sixGods[(start + index) % 6],
       changedValue: changedValue(line),
       tags,
+    };
+  });
+  const palaceDetails = palaceSourceDetails(name, palaceElement);
+  const visibleBranches = new Set(details.map((item) => item.branch));
+
+  return details.map((item, index) => {
+    const hidden = palaceDetails[index];
+    if (!hidden || visibleBranches.has(hidden.branch)) return { ...item, hidden: null };
+    return {
+      ...item,
+      hidden: {
+        relative: hidden.relative,
+        branch: hidden.branch,
+        element: hidden.element,
+      },
+    };
+  });
+}
+
+function palaceSourceDetails(name, palaceElement) {
+  const palaceName = palaceInfo[name]?.palace;
+  const bits = trigramBitsByName[palaceName];
+  if (!palaceName || !bits) return [];
+
+  const lines = [...bits, ...bits].map((bit) => (bit === "1" ? 7 : 8));
+  const trigrams = getTrigrams(lines);
+  const lowerBranches = branchByTrigram[trigrams.lower.name].lower;
+  const upperBranches = branchByTrigram[trigrams.upper.name].upper;
+
+  return lines.map((line, index) => {
+    const branch = index < 3 ? lowerBranches[index] : upperBranches[index - 3];
+    const element = branchElement[branch];
+    return {
+      position: lineLabels[index],
+      value: line,
+      branch,
+      element,
+      relative: relation(palaceElement, element),
     };
   });
 }
@@ -456,7 +495,7 @@ function renderLines(target, lines, details = []) {
 function renderTable(details, changedDetails) {
   const header = `
     <div class="yao-row is-header" aria-hidden="true">
-      <span>爻位</span><span>六神</span><span>本卦爻</span><span>本卦六亲</span><span>世应</span><span>动</span><span>变卦爻</span><span>变卦六亲</span>
+      <span>爻位</span><span>六神</span><span>本卦爻</span><span>本卦六亲</span><span>伏藏</span><span>世应</span><span>动</span><span>变卦爻</span><span>变卦六亲</span>
     </div>
   `;
   els.yaoTable.innerHTML = header + details
@@ -468,6 +507,7 @@ function renderTable(details, changedDetails) {
         <span>${item.god}</span>
         <div class="yao-mini">${strokeMarkup(item.value)}</div>
         <span>${relationMarkup(item)}</span>
+        <span>${hiddenMarkup(item.hidden)}</span>
         <span>${item.tags.join(" ") || "-"}</span>
         <span><strong class="${item.moving ? "is-moving" : ""}">${item.moving ? `${item.value} ${lineName(item.value)}` : "静"}</strong></span>
         <div class="yao-mini">${strokeMarkup(changed.value)}</div>
@@ -479,6 +519,11 @@ function renderTable(details, changedDetails) {
 
 function relationMarkup(item) {
   return `<span class="relative-name">${item.relative}</span><span class="branch-token element-${item.element}">${item.branch}${item.element}</span>`;
+}
+
+function hiddenMarkup(item) {
+  if (!item) return "-";
+  return `<span class="hidden-spirit">伏</span>${relationMarkup(item)}`;
 }
 
 function renderAux(info, base) {
@@ -954,7 +999,8 @@ function buildAiPrompt({ base, changed, details, changedDetails, info }) {
   const rows = details
     .map((item, index) => {
       const changedItem = changedDetails[index];
-      return `${item.position}：${item.god}，${item.relative}${item.branch}${item.element}，${item.tags.join("") || "无世应"}，${item.moving ? `${item.value}${lineName(item.value)}动，化${changedItem.relative}${changedItem.branch}${changedItem.element}` : `${item.value}${lineName(item.value)}静`}`;
+      const hiddenText = item.hidden ? `，伏藏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}` : "";
+      return `${item.position}：${item.god}，${item.relative}${item.branch}${item.element}${hiddenText}，${item.tags.join("") || "无世应"}，${item.moving ? `${item.value}${lineName(item.value)}动，化${changedItem.relative}${changedItem.branch}${changedItem.element}` : `${item.value}${lineName(item.value)}静`}`;
     })
     .reverse()
     .join("\n");
