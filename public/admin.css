@@ -331,11 +331,47 @@ pre {
 
 .yao-admin-row {
   display: grid;
-  grid-template-columns: 68px 72px 1fr 1fr 90px 52px 1fr;
+  grid-template-columns: 68px 72px 1fr 1fr 90px 52px 1fr 1.3fr;
   gap: 10px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid rgba(216, 208, 190, 0.75);
+}
+
+.admin-omen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.admin-omen-item {
+  padding: 10px;
+  border: 1px solid rgba(216, 208, 190, 0.8);
+  border-radius: 8px;
+  background: rgba(252, 250, 243, 0.72);
+}
+
+.admin-omen-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-omen-item strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.admin-omen-item em {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.5;
 }
 
 .yao-admin-row:last-child {
@@ -365,7 +401,8 @@ pre {
 
   .admin-layout,
   .stats,
-  .detail-grid {
+  .detail-grid,
+  .admin-omen-grid {
     grid-template-columns: 1fr;
   }
 

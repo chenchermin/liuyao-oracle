@@ -167,6 +167,7 @@ function renderDetail(record) {
   selectedRecord = record;
   const details = Array.isArray(record.castData?.details) ? record.castData.details : [];
   const changedDetails = Array.isArray(record.castData?.changedDetails) ? record.castData.changedDetails : [];
+  const diagnostics = record.castData?.diagnostics || null;
 
   els.recordDetail.innerHTML = `
     <article class="detail-head">
@@ -192,6 +193,8 @@ function renderDetail(record) {
     </section>
 
     ${record.error ? `<section class="detail-section is-error-block"><h3>错误信息</h3><p>${escapeHtml(record.error)}</p></section>` : ""}
+
+    ${diagnostics ? `<section class="detail-section"><h3>重点提示</h3><div class="admin-omen-grid">${renderDiagnostics(diagnostics)}</div></section>` : ""}
 
     <section class="detail-section">
       <h3>AI 解读</h3>
@@ -241,13 +244,26 @@ function renderYaoRows(details, changedDetails) {
         <strong>${escapeHtml(item.position || "-")}</strong>
         <span>${escapeHtml(item.god || "-")}</span>
         <span>${escapeHtml(`${item.relative || ""}${item.branch || ""}${item.element || ""}`)}</span>
-        <span>${escapeHtml(item.hidden ? `伏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}` : "-")}</span>
+        <span>${escapeHtml(formatHiddenSpirit(item.hidden))}</span>
         <span>${escapeHtml((item.tags || []).join(" / ") || "-")}</span>
         <span>${item.moving ? "动" : "静"}</span>
         <span>${escapeHtml(changed.relative ? `化${changed.relative}${changed.branch}${changed.element}` : "-")}</span>
+        <span>${escapeHtml(formatLineNotes(item.notes))}</span>
       </div>
     `;
   }).join("");
+}
+
+function renderDiagnostics(diagnostics) {
+  return Object.values(diagnostics)
+    .map((item) => `
+      <div class="admin-omen-item">
+        <span>${escapeHtml(item.title || "-")}</span>
+        <strong>${escapeHtml(item.value || "-")}</strong>
+        <em>${escapeHtml(item.detail || "-")}</em>
+      </div>
+    `)
+    .join("");
 }
 
 function exportFilteredRecords() {
@@ -315,13 +331,17 @@ function showCopyState(text) {
 function formatFullReading(record) {
   const details = Array.isArray(record.castData?.details) ? record.castData.details : [];
   const changedDetails = Array.isArray(record.castData?.changedDetails) ? record.castData.changedDetails : [];
+  const diagnostics = record.castData?.diagnostics ? Object.values(record.castData.diagnostics)
+    .map((item) => `${item.title}：${item.value}；${item.detail}`)
+    .join("\n") : "";
   const rows = details.slice().reverse().map((item) => {
     const index = details.indexOf(item);
     const changed = changedDetails[index] || {};
-    const hidden = item.hidden ? `，伏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}` : "";
+    const hidden = item.hidden ? `，${formatHiddenSpirit(item.hidden)}` : "";
+    const notes = formatLineNotes(item.notes);
     const tags = (item.tags || []).join("/") || "无世应";
     const movement = item.moving ? `动，化${changed.relative || ""}${changed.branch || ""}${changed.element || ""}` : "静";
-    return `${item.position}：${item.god}，${item.relative}${item.branch}${item.element}${hidden}，${tags}，${movement}`;
+    return `${item.position}：${item.god}，${item.relative}${item.branch}${item.element}${hidden}，${tags}，${movement}${notes ? `，提示：${notes}` : ""}`;
   }).join("\n");
 
   return [
@@ -336,12 +356,27 @@ function formatFullReading(record) {
     `动爻：${record.movingLines || "无"}`,
     `六爻：${Array.isArray(record.lines) ? record.lines.join(" / ") : "-"}`,
     "",
+    "重点提示：",
+    diagnostics || "无重点提示",
+    "",
     "六爻装表：",
     rows || "无排盘明细",
     "",
     "AI 解读：",
     record.aiText || "无 AI 内容。",
   ].join("\n");
+}
+
+function formatHiddenSpirit(hidden) {
+  if (!hidden) return "-";
+  const fly = hidden.fly ? `，飞${hidden.fly.relative}${hidden.fly.branch}${hidden.fly.element}` : "";
+  return `伏${hidden.relative}${hidden.branch}${hidden.element}${fly}`;
+}
+
+function formatLineNotes(notes = []) {
+  return Array.isArray(notes) && notes.length
+    ? notes.map((note) => `${note.label}${note.text ? `(${note.text})` : ""}`).join("、")
+    : "";
 }
 
 function escapeHtml(value) {

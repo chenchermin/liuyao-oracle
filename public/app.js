@@ -99,6 +99,10 @@ const produces = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
 const controls = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
 const sixGods = ["青龙", "朱雀", "勾陈", "螣蛇", "白虎", "玄武"];
 const trigramBitsByName = Object.fromEntries(Object.entries(trigramMap).map(([bits, trigram]) => [trigram.name, bits]));
+const clashPairs = [["子", "午"], ["丑", "未"], ["寅", "申"], ["卯", "酉"], ["辰", "戌"], ["巳", "亥"]];
+const harmonyPairs = [["子", "丑"], ["寅", "亥"], ["卯", "戌"], ["辰", "酉"], ["巳", "申"], ["午", "未"]];
+const hexagramClashNames = new Set(["乾为天", "坤为地", "震为雷", "巽为风", "坎为水", "离为火", "艮为山", "兑为泽", "天雷无妄", "雷天大壮"]);
+const hexagramHarmonyNames = new Set(["天地否", "地天泰", "泽水困", "水泽节", "火山旅", "山火贲", "雷地豫", "地雷复"]);
 
 const topicSpirit = {
   career: { spirit: "官鬼", focus: "职位、规则、压力与机会并看" },
@@ -136,6 +140,7 @@ const els = {
   useSpirit: document.querySelector("#useSpirit"),
   castTime: document.querySelector("#castTime"),
   auxGrid: document.querySelector("#auxGrid"),
+  omenGrid: document.querySelector("#omenGrid"),
   yaoTable: document.querySelector("#yaoTable"),
   aiEndpoint: document.querySelector("#aiEndpoint"),
   aiModel: document.querySelector("#aiModel"),
@@ -278,6 +283,7 @@ function resetResultPlaceholders() {
   renderLines(els.changedLines, currentLines.map(changedValue));
   els.yaoTable.innerHTML = "";
   els.auxGrid.innerHTML = "";
+  els.omenGrid.innerHTML = "";
 }
 
 function lineToBit(value) {
@@ -307,6 +313,24 @@ function relation(selfElement, lineElement) {
   if (controls[lineElement] === selfElement) return "官鬼";
   if (controls[selfElement] === lineElement) return "妻财";
   return "同参";
+}
+
+function pairedBranch(branch, pairs) {
+  const pair = pairs.find(([left, right]) => left === branch || right === branch);
+  if (!pair) return "";
+  return pair[0] === branch ? pair[1] : pair[0];
+}
+
+function clashes(left, right) {
+  return pairedBranch(left, clashPairs) === right;
+}
+
+function harmonizes(left, right) {
+  return pairedBranch(left, harmonyPairs) === right;
+}
+
+function branchFromGanzhi(value) {
+  return branches.find((branch) => String(value || "").includes(branch)) || "";
 }
 
 function dayStemIndex() {
@@ -438,17 +462,22 @@ function yaoDetails(lines, trigrams, name, palaceElement = palaceInfo[name]?.ele
     };
   });
   const palaceDetails = palaceSourceDetails(name, palaceElement);
-  const visibleBranches = new Set(details.map((item) => item.branch));
+  const visibleRelatives = new Set(details.map((item) => item.relative));
 
   return details.map((item, index) => {
     const hidden = palaceDetails[index];
-    if (!hidden || visibleBranches.has(hidden.branch)) return { ...item, hidden: null };
+    if (!hidden || visibleRelatives.has(hidden.relative)) return { ...item, hidden: null };
     return {
       ...item,
       hidden: {
         relative: hidden.relative,
         branch: hidden.branch,
         element: hidden.element,
+        fly: {
+          relative: item.relative,
+          branch: item.branch,
+          element: item.element,
+        },
       },
     };
   });
@@ -477,6 +506,133 @@ function palaceSourceDetails(name, palaceElement) {
   });
 }
 
+function annotateLineSignals(details, changedDetails, info) {
+  const voidSet = new Set(String(info.voids || "").split("、").filter(Boolean));
+  const monthBranch = branchFromGanzhi(info.month);
+  const dayBranch = branchFromGanzhi(info.day);
+
+  details.forEach((item, index) => {
+    const changed = changedDetails[index] || {};
+    const notes = [];
+    const highlight = [];
+
+    if (voidSet.has(item.branch)) {
+      notes.push({ type: "void", label: "旬空", text: `${item.branch}临日空` });
+      highlight.push("旬空");
+    }
+    if (monthBranch && clashes(item.branch, monthBranch)) {
+      notes.push({ type: "month-break", label: "月破", text: `${item.branch}冲月建${monthBranch}` });
+      highlight.push("月破");
+    }
+    if (dayBranch && clashes(item.branch, dayBranch)) {
+      notes.push({ type: "day-clash", label: "日冲", text: `${item.branch}受日辰${dayBranch}冲` });
+      highlight.push("日冲");
+    }
+    if (monthBranch && harmonizes(item.branch, monthBranch)) {
+      notes.push({ type: "month-harmony", label: "月合", text: `${item.branch}与月建${monthBranch}合` });
+    }
+    if (dayBranch && harmonizes(item.branch, dayBranch)) {
+      notes.push({ type: "day-harmony", label: "日合", text: `${item.branch}与日辰${dayBranch}合` });
+    }
+    if (item.moving) {
+      notes.push({ type: "moving", label: "动爻", text: `${item.position}${lineName(item.value)}动，化${changed.relative || ""}${changed.branch || ""}${changed.element || ""}` });
+      highlight.push("动");
+    }
+    if (item.hidden) {
+      const fly = item.hidden.fly ? `，飞${item.hidden.fly.relative}${item.hidden.fly.branch}${item.hidden.fly.element}` : "";
+      notes.push({ type: "hidden", label: "伏神", text: `伏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}${fly}` });
+      highlight.push("伏");
+    }
+    if (item.moving && changed.branch && changed.branch !== item.branch) {
+      const relationText = describeChangeRelation(item, changed);
+      notes.push({ type: "change", label: "变爻", text: `${item.relative}${item.branch}${item.element}化${changed.relative}${changed.branch}${changed.element}${relationText ? `，${relationText}` : ""}` });
+    }
+
+    item.notes = notes;
+    item.flags = highlight;
+  });
+}
+
+function describeChangeRelation(item, changed) {
+  if (!changed?.element || item.element === changed.element) return "本气不变";
+  if (produces[item.element] === changed.element) return "本爻生变爻";
+  if (produces[changed.element] === item.element) return "变爻回生";
+  if (controls[item.element] === changed.element) return "本爻克变爻";
+  if (controls[changed.element] === item.element) return "变爻回克";
+  return "";
+}
+
+function buildDiagnostics({ base, changed, details, changedDetails, info }) {
+  const voidBranchesText = info.voids || "-";
+  const monthBranch = branchFromGanzhi(info.month);
+  const dayBranch = branchFromGanzhi(info.day);
+  const moving = details.filter((item) => item.moving);
+  const hidden = details.filter((item) => item.hidden);
+  const voidLines = linesWithNote(details, "void");
+  const monthBreakLines = linesWithNote(details, "month-break");
+  const dayClashLines = linesWithNote(details, "day-clash");
+  const harmonyLines = details
+    .filter((item) => item.notes?.some((note) => note.type === "month-harmony" || note.type === "day-harmony"))
+    .map((item) => `${item.position}${item.branch}`);
+  const hexagramHarmonyClash = [
+    hexagramClashNames.has(base.name) ? `本卦${base.name}为六冲卦` : "",
+    hexagramHarmonyNames.has(base.name) ? `本卦${base.name}为六合卦` : "",
+    changed.name !== base.name && hexagramClashNames.has(changed.name) ? `变卦${changed.name}为六冲卦` : "",
+    changed.name !== base.name && hexagramHarmonyNames.has(changed.name) ? `变卦${changed.name}为六合卦` : "",
+  ].filter(Boolean);
+
+  const changeFocus = moving.map((item) => {
+    const index = details.indexOf(item);
+    const changedItem = changedDetails[index] || {};
+    const relationText = describeChangeRelation(item, changedItem);
+    return `${item.position}${item.relative}${item.branch}${item.element}化${changedItem.relative || ""}${changedItem.branch || ""}${changedItem.element || ""}${relationText ? `（${relationText}）` : ""}`;
+  });
+
+  const hiddenFocus = hidden.map((item) => {
+    const fly = item.hidden.fly ? `，飞${item.hidden.fly.relative}${item.hidden.fly.branch}${item.hidden.fly.element}` : "";
+    return `${item.position}伏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}${fly}`;
+  });
+
+  return {
+    void: {
+      title: "旬空",
+      value: `${voidBranchesText}空`,
+      detail: voidLines.length ? `${voidLines.join("、")}落空` : "本卦六爻未临旬空",
+    },
+    monthBreak: {
+      title: "月破",
+      value: monthBreakLines.length ? monthBreakLines.join("、") : "无",
+      detail: monthBranch ? `月建${monthBranch}；${monthBreakLines.length ? "被月建所冲者为月破" : "六爻未见月破"}` : "未取到月建",
+    },
+    dayClash: {
+      title: "日冲",
+      value: dayClashLines.length ? dayClashLines.join("、") : "无",
+      detail: dayBranch ? `日辰${dayBranch}；${dayClashLines.length ? "受日辰所冲" : "六爻未见日冲"}` : "未取到日辰",
+    },
+    harmonyClash: {
+      title: "六合六冲",
+      value: hexagramHarmonyClash.length ? hexagramHarmonyClash.join("；") : "本变卦未入固定六合/六冲卦",
+      detail: harmonyLines.length ? `爻支与月日六合：${harmonyLines.join("、")}` : "爻支未见与月日六合",
+    },
+    moving: {
+      title: "动爻",
+      value: moving.length ? moving.map((item) => item.position).join("、") : "无",
+      detail: changeFocus.length ? changeFocus.join("；") : "六爻皆静，以世应、用神旺衰为主",
+    },
+    hidden: {
+      title: "伏神",
+      value: hidden.length ? hidden.map((item) => item.position).join("、") : "无",
+      detail: hiddenFocus.length ? hiddenFocus.join("；") : "本卦所需六亲均已上卦",
+    },
+  };
+}
+
+function linesWithNote(details, type) {
+  return details
+    .filter((item) => item.notes?.some((note) => note.type === type))
+    .map((item) => `${item.position}${item.branch}`);
+}
+
 function renderLines(target, lines, details = []) {
   target.innerHTML = lines
     .map((line, index) => {
@@ -496,7 +652,7 @@ function renderTable(details, changedDetails) {
   const useSpirits = selectedUseSpirits();
   const header = `
     <div class="yao-row is-header" aria-hidden="true">
-      <span>爻位</span><span>六神</span><span>本卦爻</span><span>本卦六亲</span><span>伏藏</span><span>世应</span><span>动</span><span>变卦爻</span><span>变卦六亲</span>
+      <span>爻位</span><span>六神</span><span>本卦爻</span><span>本卦六亲</span><span>伏藏</span><span>世应</span><span>动</span><span>变卦爻</span><span>变卦六亲</span><span>提示</span>
     </div>
   `;
   els.yaoTable.innerHTML = header + details
@@ -520,10 +676,16 @@ function renderTable(details, changedDetails) {
         <span><strong class="${item.moving ? "is-moving" : ""}">${item.moving ? `${item.value} ${lineName(item.value)}` : "静"}</strong></span>
         <div class="yao-mini">${strokeMarkup(changed.value)}</div>
         <span>${item.moving ? relationMarkup(changed) : "-"}</span>
+        <span>${noteBadges(item.notes)}</span>
       </div>
     `;
     })
     .join("");
+}
+
+function noteBadges(notes = []) {
+  if (!notes.length) return "-";
+  return `<span class="note-badges">${notes.map((note) => `<span class="note-badge note-${note.type}" title="${escapeHtml(note.text)}">${escapeHtml(note.label)}</span>`).join("")}</span>`;
 }
 
 function relationMarkup(item) {
@@ -533,7 +695,8 @@ function relationMarkup(item) {
 
 function hiddenMarkup(item) {
   if (!item) return "-";
-  return `<span class="hidden-pair"><span class="hidden-spirit">伏</span>${relationMarkup(item)}</span>`;
+  const flyText = item.fly ? `，飞${item.fly.relative}${item.fly.branch}${item.fly.element}` : "";
+  return `<span class="hidden-pair" title="伏${item.relative}${item.branch}${item.element}${flyText}"><span class="hidden-spirit">伏</span>${relationMarkup(item)}</span>`;
 }
 
 function selectedUseSpirits() {
@@ -563,6 +726,23 @@ function renderAux(info, base) {
     .join("");
 }
 
+function renderOmenGrid(diagnostics) {
+  if (!diagnostics) {
+    els.omenGrid.innerHTML = "";
+    return;
+  }
+
+  els.omenGrid.innerHTML = Object.values(diagnostics)
+    .map((item) => `
+      <div class="omen-item">
+        <span>${escapeHtml(item.title)}</span>
+        <strong>${escapeHtml(item.value)}</strong>
+        <em>${escapeHtml(item.detail)}</em>
+      </div>
+    `)
+    .join("");
+}
+
 function currentCastData() {
   if (currentLines.length < 6) return null;
 
@@ -575,7 +755,9 @@ function currentCastData() {
   const details = yaoDetails(currentLines, baseTrigrams, base.name, palaceElement);
   const changedDetails = yaoDetails(changedLines, changedTrigrams, base.name, palaceElement);
   const info = auxInfo();
-  return { base, changed, details, changedDetails, info };
+  annotateLineSignals(details, changedDetails, info);
+  const diagnostics = buildDiagnostics({ base, changed, details, changedDetails, info });
+  return { base, changed, details, changedDetails, info, diagnostics };
 }
 
 function cast(options = {}) {
@@ -593,7 +775,7 @@ function cast(options = {}) {
     return;
   }
 
-  const { base, changed, details, changedDetails, info } = currentCastData();
+  const { base, changed, details, changedDetails, info, diagnostics } = currentCastData();
   const changedLines = currentLines.map(changedValue);
   const positions = shiYingPositions(base.name);
   const moving = details.filter((item) => item.moving);
@@ -614,6 +796,7 @@ function cast(options = {}) {
   renderLines(els.changedLines, changedLines);
   renderTable(details, changedDetails);
   renderAux(info, base);
+  renderOmenGrid(diagnostics);
   renderProgress();
   els.aiStatus.textContent = "排盘完成，AI 解卦提示将自动生成。";
 
@@ -702,7 +885,7 @@ async function analyzeWithAI(options = {}) {
       onChunk(partialText) {
         if (requestId !== aiRequestId) return;
         renderAiOutput(partialText, { streaming: true });
-        els.aiStatus.textContent = "AI 正在分析卦象，内容会实时更新。";
+        els.aiStatus.textContent = `AI 正在分析卦象，已接收 ${Array.from(partialText).length} 字。`;
       },
     });
 
@@ -921,8 +1104,12 @@ function inlineFormat(value) {
 
 function renderAiLoading() {
   els.aiOutput.innerHTML = `
-    <div class="ai-loading" aria-hidden="true">
-      <span></span><span></span><span></span>
+    <div class="ai-loading" aria-live="polite">
+      <div class="ai-loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div>
+        <strong>正在连接 AI 并整理排盘重点</strong>
+        <p>会依次处理用神世应、旬空月破日冲、六合六冲、动爻变爻与伏神。</p>
+      </div>
     </div>
   `;
 }
@@ -935,7 +1122,7 @@ function renderAiOutput(text, options = {}) {
     return;
   }
 
-  const headingPattern = /^(总论|用神与世应|动爻与变卦|建议|需谨慎处|谨慎处|结论|分析|提醒|补充)(?:[:：\s]*)?(.*)$/;
+  const headingPattern = /^(总论|用神与世应|旬空月破日冲|六合六冲|动爻变爻|动爻与变卦|伏神|建议|需谨慎处|谨慎处|结论|分析|提醒|补充)(?:[:：\s]*)?(.*)$/;
   const sections = [];
   let current = null;
 
@@ -945,22 +1132,29 @@ function renderAiOutput(text, options = {}) {
 
     const heading = line.match(headingPattern);
     if (heading) {
-      current = { title: heading[1] === "谨慎处" ? "需谨慎处" : heading[1], lines: [] };
+      const title = normalizeAiHeading(heading[1]);
+      current = { title, id: aiHeadingId(title, sections.length), lines: [] };
       sections.push(current);
       if (heading[2]) current.lines.push(heading[2]);
       return;
     }
 
     if (!current) {
-      current = { title: "AI 解读", lines: [] };
+      current = { title: "AI 解读", id: aiHeadingId("AI 解读", sections.length), lines: [] };
       sections.push(current);
     }
     current.lines.push(line);
   });
 
-  els.aiOutput.innerHTML = sections
+  const toc = sections.length > 1 ? `
+    <nav class="ai-toc" aria-label="AI 解读目录">
+      ${sections.map((section) => `<a href="#${section.id}">${escapeHtml(section.title)}</a>`).join("")}
+    </nav>
+  ` : "";
+
+  els.aiOutput.innerHTML = toc + sections
     .map((section, index) => `
-      <article class="ai-section ${index === 0 ? "is-primary" : ""}">
+      <article class="ai-section ${index === 0 ? "is-primary" : ""}" id="${section.id}">
         <div class="ai-section-kicker">${String(index + 1).padStart(2, "0")}</div>
         <h3>${escapeHtml(section.title)}</h3>
         ${renderAiSectionLines(section.lines)}
@@ -969,12 +1163,22 @@ function renderAiOutput(text, options = {}) {
     .join("") + (streaming ? `<div class="ai-stream-cursor" aria-hidden="true"></div>` : "");
 }
 
+function normalizeAiHeading(value) {
+  if (value === "谨慎处") return "需谨慎处";
+  if (value === "动爻与变卦") return "动爻变爻";
+  return value;
+}
+
+function aiHeadingId(title, index) {
+  return `ai-${index + 1}-${title.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]+/g, "-")}`;
+}
+
 function cleanMarkdownLine(value) {
   return String(value)
     .trim()
     .replace(/^#{1,6}\s*/, "")
     .replace(/^>\s*/, "")
-    .replace(/^(?:\d+|[一二三四五六七八九十]+)[.、]\s*(?=(总论|用神与世应|动爻与变卦|建议|需谨慎处|谨慎处|结论|分析|提醒|补充))/u, "")
+    .replace(/^(?:\d+|[一二三四五六七八九十]+)[.、]\s*(?=(总论|用神与世应|旬空月破日冲|六合六冲|动爻变爻|动爻与变卦|伏神|建议|需谨慎处|谨慎处|结论|分析|提醒|补充))/u, "")
     .replace(/^\*\*(.+?)\*\*([：:].*)?$/, (_, title, rest = "") => `${title}${rest}`)
     .replace(/^__(.+?)__([：:].*)?$/, (_, title, rest = "") => `${title}${rest}`)
     .replace(/^\*\*(.+?)\*\*$/, "$1")
@@ -1012,7 +1216,7 @@ function renderAiSectionLines(lines) {
   return parts.join("");
 }
 
-function buildAiPrompt({ base, changed, details, changedDetails, info }) {
+function buildAiPrompt({ base, changed, details, changedDetails, info, diagnostics }) {
   const userName = els.userName.value.trim() || "未填写";
   const gender = els.gender.options[els.gender.selectedIndex].textContent || "未填写";
   const question = els.question.value.trim() || "未填写";
@@ -1020,13 +1224,45 @@ function buildAiPrompt({ base, changed, details, changedDetails, info }) {
   const rows = details
     .map((item, index) => {
       const changedItem = changedDetails[index];
-      const hiddenText = item.hidden ? `，伏藏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}` : "";
-      return `${item.position}：${item.god}，${item.relative}${item.branch}${item.element}${hiddenText}，${item.tags.join("") || "无世应"}，${item.moving ? `${item.value}${lineName(item.value)}动，化${changedItem.relative}${changedItem.branch}${changedItem.element}` : `${item.value}${lineName(item.value)}静`}`;
+      const flyText = item.hidden?.fly ? `，飞神${item.hidden.fly.relative}${item.hidden.fly.branch}${item.hidden.fly.element}` : "";
+      const hiddenText = item.hidden ? `，伏藏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}${flyText}` : "";
+      const noteText = item.notes?.length ? `，提示：${item.notes.map((note) => `${note.label}${note.text ? `(${note.text})` : ""}`).join("、")}` : "";
+      return `${item.position}：${item.god}，${item.relative}${item.branch}${item.element}${hiddenText}，${item.tags.join("") || "无世应"}，${item.moving ? `${item.value}${lineName(item.value)}动，化${changedItem.relative}${changedItem.branch}${changedItem.element}` : `${item.value}${lineName(item.value)}静`}${noteText}`;
     })
     .reverse()
     .join("\n");
+  const structuredRows = details.slice().reverse().map((item) => ({
+    position: item.position,
+    god: item.god,
+    base: `${item.relative}${item.branch}${item.element}`,
+    tags: item.tags,
+    moving: item.moving,
+    hidden: item.hidden ? `伏${item.hidden.relative}${item.hidden.branch}${item.hidden.element}${item.hidden.fly ? `，飞${item.hidden.fly.relative}${item.hidden.fly.branch}${item.hidden.fly.element}` : ""}` : "",
+    changed: item.moving ? `${changedDetails[details.indexOf(item)]?.relative || ""}${changedDetails[details.indexOf(item)]?.branch || ""}${changedDetails[details.indexOf(item)]?.element || ""}` : "",
+    notes: (item.notes || []).map((note) => `${note.label}：${note.text}`),
+  }));
+  const diagnosticText = Object.values(diagnostics || {})
+    .map((item) => `${item.title}：${item.value}；${item.detail}`)
+    .join("\n");
 
-  return `你是一名熟悉传统六爻纳甲体系的解卦助手。请基于下列排盘做分析，语言务实，不要玄虚夸大，不要给绝对结论。请按“总论、用神与世应、动爻与变卦、建议、需谨慎处”输出。
+  return `你是一名熟悉传统六爻纳甲体系的解卦助手。请基于下列排盘做分析，语言务实，不要玄虚夸大，不要给绝对结论。
+
+输出格式必须严格使用以下标题，每个标题独占一行：
+总论
+用神与世应
+旬空月破日冲
+六合六冲
+动爻变爻
+伏神
+建议
+需谨慎处
+
+判读要求：
+1. 优先解释用神、世应、动爻、伏神、变爻，再看旬空、月破、日冲、六合六冲。
+2. 每节用 2-4 条短句，不要输出原始 JSON，不要使用代码块。
+3. 对“旬空、月破、日冲、六合、六冲”只按排盘提示解释作用，不要自行重算。
+4. 对动爻说明本爻、化爻及回生/回克/本爻生克变爻。
+5. 对伏神说明伏神是什么、伏在哪一爻、飞神是什么，以及它对所问事项的影响。
 
 姓名：${userName}
 性别：${gender}
@@ -1041,8 +1277,14 @@ function buildAiPrompt({ base, changed, details, changedDetails, info }) {
 动爻：${moving}
 用神参考：${topicSpirit[els.topic.value].spirit}
 
+重点提示：
+${diagnosticText || "无特殊提示"}
+
 六爻装表（自上而下）：
-${rows}`;
+${rows}
+
+结构化排盘：
+${JSON.stringify(structuredRows, null, 2)}`;
 }
 
 function extractResponseText(data) {

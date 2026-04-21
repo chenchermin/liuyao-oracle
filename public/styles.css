@@ -763,10 +763,27 @@ button:focus-visible {
   background: var(--line);
 }
 
+.omen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
 .aux-item {
   min-height: 78px;
   padding: 12px;
   background: rgba(252, 250, 243, 0.72);
+}
+
+.omen-item {
+  min-height: 98px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(13, 123, 112, 0.08), transparent 48%),
+    rgba(252, 250, 243, 0.74);
 }
 
 .aux-item span {
@@ -781,6 +798,33 @@ button:focus-visible {
 .aux-item strong {
   font-size: 0.95rem;
   line-height: 1.35;
+}
+
+.omen-item span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-family: "Songti SC", SimSun, serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.omen-item strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.94rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.omen-item em {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .detail {
@@ -866,10 +910,10 @@ button:focus-visible {
 .yao-row {
   position: relative;
   display: grid;
-  grid-template-columns: 58px 70px 104px 150px 150px 56px 92px 104px 136px;
+  grid-template-columns: 58px 70px 104px 146px 150px 56px 92px 104px 136px 132px;
   gap: 10px;
   align-items: center;
-  min-width: 1060px;
+  min-width: 1210px;
   min-height: 52px;
   padding: 10px 14px;
   background: rgba(252, 250, 243, 0.88);
@@ -964,6 +1008,52 @@ button:focus-visible {
   background: rgba(185, 148, 60, 0.1);
 }
 
+.note-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.note-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid rgba(149, 137, 112, 0.28);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.note-void,
+.note-month-break,
+.note-day-clash {
+  color: #8b2f37;
+  border-color: rgba(182, 76, 85, 0.26);
+  background: rgba(182, 76, 85, 0.08);
+}
+
+.note-month-harmony,
+.note-day-harmony {
+  color: var(--accent-strong);
+  border-color: rgba(13, 123, 112, 0.24);
+  background: rgba(13, 123, 112, 0.08);
+}
+
+.note-moving {
+  color: #9a333c;
+  border-color: rgba(182, 76, 85, 0.28);
+}
+
+.note-hidden {
+  color: var(--gold);
+  border-color: rgba(185, 148, 60, 0.3);
+  background: rgba(185, 148, 60, 0.1);
+}
+
 .element-木 {
   color: #125f3b;
   background: rgba(37, 139, 83, 0.14);
@@ -1041,14 +1131,24 @@ button:focus-visible {
 }
 
 .ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 14px;
+  border: 1px solid rgba(216, 208, 190, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.ai-loading-dots {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 54px;
-  padding: 0 4px;
+  flex: 0 0 auto;
 }
 
-.ai-loading span {
+.ai-loading-dots span {
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -1056,12 +1156,54 @@ button:focus-visible {
   animation: pulse 900ms ease-in-out infinite;
 }
 
-.ai-loading span:nth-child(2) {
+.ai-loading-dots span:nth-child(2) {
   animation-delay: 120ms;
 }
 
-.ai-loading span:nth-child(3) {
+.ai-loading-dots span:nth-child(3) {
   animation-delay: 240ms;
+}
+
+.ai-loading strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.ai-loading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.ai-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(216, 208, 190, 0.9);
+  border-radius: 8px;
+  background: rgba(252, 250, 243, 0.58);
+}
+
+.ai-toc a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(13, 123, 112, 0.18);
+  border-radius: 6px;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  background: rgba(13, 123, 112, 0.06);
+}
+
+.ai-section {
+  scroll-margin-top: 18px;
 }
 
 .ai-section {
@@ -1271,12 +1413,13 @@ button:focus-visible {
 
   .details-grid,
   .aux-grid,
+  .omen-grid,
   .field-grid {
     grid-template-columns: 1fr;
   }
 
   .yao-row {
-    grid-template-columns: 58px 70px 104px 150px 150px 56px 92px 104px 136px;
+    grid-template-columns: 58px 70px 104px 146px 150px 56px 92px 104px 136px 132px;
   }
 
 }
