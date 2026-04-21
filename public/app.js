@@ -277,7 +277,7 @@ function resetResultPlaceholders() {
   els.changedTrigrams.textContent = currentLines.length ? "已定爻同步显示" : "动爻成变";
   els.movingLines.textContent = "-";
   els.shiYing.textContent = "-";
-  els.useSpirit.textContent = topicSpirit[els.topic.value].spirit;
+  els.useSpirit.textContent = useSpiritProfile().label;
   els.castTime.textContent = "";
   renderLines(els.baseLines, currentLines);
   renderLines(els.changedLines, currentLines.map(changedValue));
@@ -700,10 +700,39 @@ function hiddenMarkup(item) {
 }
 
 function selectedUseSpirits() {
-  return (topicSpirit[els.topic.value]?.spirit || "")
-    .split("/")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return useSpiritProfile().spirits;
+}
+
+function useSpiritProfile() {
+  const topic = els.topic.value;
+  if (topic === "relationship") {
+    if (els.gender.value === "female") {
+      return {
+        spirits: ["官鬼"],
+        label: "官鬼",
+        rationale: "女性问感情，以官鬼为主要用神；妻财只作关系环境或竞争信息参考。",
+      };
+    }
+    if (els.gender.value === "male") {
+      return {
+        spirits: ["妻财"],
+        label: "妻财",
+        rationale: "男性问感情，以妻财为主要用神；官鬼只作压力、规则或竞争信息参考。",
+      };
+    }
+    return {
+      spirits: ["官鬼", "妻财"],
+      label: "官鬼 / 妻财",
+      rationale: "感情事项未明确传统性别取用，官鬼与妻财并看，但需先说明这是暂定取法。",
+    };
+  }
+
+  const spirit = topicSpirit[topic]?.spirit || "";
+  return {
+    spirits: spirit.split("/").map((item) => item.trim()).filter(Boolean),
+    label: spirit || "-",
+    rationale: topicSpirit[topic]?.focus || "按事项类型取用神，并结合世应、动爻、伏神判断。",
+  };
 }
 
 function isUseSpirit(item, useSpirits = selectedUseSpirits()) {
@@ -779,7 +808,7 @@ function cast(options = {}) {
   const changedLines = currentLines.map(changedValue);
   const positions = shiYingPositions(base.name);
   const moving = details.filter((item) => item.moving);
-  const selectedTopic = topicSpirit[els.topic.value];
+  const useSpirit = useSpiritProfile();
 
   els.baseName.textContent = base.name;
   els.baseTrigrams.textContent = `${base.upper.symbol}${base.upper.name}${base.upper.nature}上，${base.lower.symbol}${base.lower.name}${base.lower.nature}下`;
@@ -789,7 +818,7 @@ function cast(options = {}) {
     : "六爻皆静";
   els.movingLines.textContent = moving.length ? moving.map((item) => item.position).join("、") : "无动爻";
   els.shiYing.textContent = `${palaceInfo[base.name]?.palace || base.upper.name}宫，世在${lineLabels[positions.shi - 1]}，应在${lineLabels[positions.ying - 1]}`;
-  els.useSpirit.textContent = selectedTopic.spirit;
+  els.useSpirit.textContent = useSpirit.label;
   els.castTime.textContent = info.dateText;
 
   renderLines(els.baseLines, currentLines, details);
@@ -1220,6 +1249,7 @@ function buildAiPrompt({ base, changed, details, changedDetails, info, diagnosti
   const userName = els.userName.value.trim() || "未填写";
   const gender = els.gender.options[els.gender.selectedIndex].textContent || "未填写";
   const question = els.question.value.trim() || "未填写";
+  const useSpirit = useSpiritProfile();
   const moving = details.filter((item) => item.moving).map((item) => item.position).join("、") || "无";
   const rows = details
     .map((item, index) => {
@@ -1275,7 +1305,8 @@ function buildAiPrompt({ base, changed, details, changedDetails, info, diagnosti
 本卦：${base.name}（${base.upper.name}上${base.lower.name}下）
 变卦：${changed.name}（${changed.upper.name}上${changed.lower.name}下）
 动爻：${moving}
-用神参考：${topicSpirit[els.topic.value].spirit}
+用神参考：${useSpirit.label}
+用神取法：${useSpirit.rationale}
 
 重点提示：
 ${diagnosticText || "无特殊提示"}
@@ -1326,6 +1357,8 @@ function throwOnce() {
 els.coinBtn.addEventListener("click", throwOnce);
 els.coins.forEach((coin) => coin.addEventListener("click", throwOnce));
 els.resetBtn.addEventListener("click", reset);
+els.gender.addEventListener("change", () => cast());
+els.topic.addEventListener("change", () => cast());
 els.method.addEventListener("change", () => {
   if (els.method.value === "manual") {
     els.lineEditor.hidden = false;
